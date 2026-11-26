@@ -43,6 +43,8 @@ jobs:
           python3 build-automation/scripts/intel/prepare-source.py . | tee intel-pins.txt
           cat intel-pins.txt >> "$GITHUB_OUTPUT"
           git diff --check
+      - name: Test DMG packaging before compiling the browser
+        run: build-automation/scripts/intel/test-packaging.sh
       - uses: actions/setup-node@v4
         with:
           node-version-file: .node-version
