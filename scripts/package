@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+set -euo pipefail
+# Build from the upstream checkout; automation lives in build-automation/.
+[[ "$(uname -s)" == Darwin && "$(uname -m)" == x86_64 ]] || { echo 'error: native Intel macOS is required' >&2; exit 1; }
+[[ "${1:-x86_64-apple-darwin}" == x86_64-apple-darwin ]] || { echo 'error: only x86_64-apple-darwin is supported' >&2; exit 1; }
+test -s intel-pins.txt || { echo 'error: run prepare-source.py first' >&2; exit 1; }
+grep -qx 'const SUPPORTED: bool = false;' desktop/src/updates.rs
+grep -q 'INTEL-BUILD' desktop/src/updates.rs
+mkdir -p target dist
+python3 scripts/release/third_party_notices.py target/THIRD_PARTY_NOTICES.txt
+test -s target/THIRD_PARTY_NOTICES.txt
+git diff -- desktop/src/updates.rs > dist/community-build.patch
+test -s dist/community-build.patch
+{
+  echo 'Unofficial Intel x86_64 community build of Zephium; not endorsed by upstream.'
+  echo 'Ad hoc signed; not Developer ID signed or notarized. Install updates manually.'
+  echo "source_repository=https://github.com/${ZEPHIUM_SOURCE_REPOSITORY:?}"
+  echo "source_ref=${ZEPHIUM_SOURCE_REF:?}"
+  echo "source_commit=$(git rev-parse HEAD)"
+  echo "source_url=https://github.com/$ZEPHIUM_SOURCE_REPOSITORY/tree/$(git rev-parse HEAD)"
+  echo "automation_commit=${GITHUB_SHA:-local}"
+  echo "automation_url=https://github.com/${GITHUB_REPOSITORY:-rezzamohammad/zephium-intel-mac-builds}"
+  echo 'Modification: INTEL-BUILD disables the official updater; see community-build.patch.'
+} > target/COMMUNITY-BUILD.txt
+cp target/COMMUNITY-BUILD.txt dist/COMMUNITY-BUILD.txt
+# INTEL-BUILD: retain upstream features, CSP, runtime admission and legal resources.
+config="$(pwd)/build-automation/scripts/intel/tauri.community.conf.json"
+(cd desktop && pnpm tauri build --target x86_64-apple-darwin --bundles app --config "$config" -- --locked)
+app=target/x86_64-apple-darwin/release/bundle/macos/Zephium.app
+test -x "$app/Contents/MacOS/zephium-desktop"
+codesign --verify --deep --strict "$app"
+build-automation/scripts/intel/make-dmg.sh "$app" dist/Zephium-macOS-x86_64.dmg

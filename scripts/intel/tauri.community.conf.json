@@ -1,0 +1,17 @@
+{
+  "bundle": {
+    "createUpdaterArtifacts": false,
+    "resources": {
+      "../target/THIRD_PARTY_NOTICES.txt": "licenses/THIRD_PARTY_NOTICES.txt",
+      "../target/COMMUNITY-BUILD.txt": "licenses/COMMUNITY-BUILD.txt"
+    },
+    "macOS": {
+      "signingIdentity": "-"
+    }
+  },
+  "plugins": {
+    "updater": {
+      "endpoints": []
+    }
+  }
+}

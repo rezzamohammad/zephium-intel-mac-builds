@@ -1,0 +1,90 @@
+name: Build Intel DMG (legacy)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: intel-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: macos-15-intel
+    timeout-minutes: 180
+    env:
+      ZEPHIUM_SOURCE_REPOSITORY: ${{ vars.ZEPHIUM_SOURCE_REPOSITORY || 'zephium-browser/Zephium' }}
+      ZEPHIUM_SOURCE_REF: ${{ vars.ZEPHIUM_SOURCE_REF || '1c4846cec9a9a0ab40ed45113d69a3f3c244d279' }}
+      RUST_TARGET: x86_64-apple-darwin
+      CARGO_TARGET_X86_64_APPLE_DARWIN_RUNNER: env
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: ${{ env.ZEPHIUM_SOURCE_REPOSITORY }}
+          ref: ${{ env.ZEPHIUM_SOURCE_REF }}
+          fetch-depth: 1
+          persist-credentials: false
+          token: ${{ secrets.ZEPHIUM_SOURCE_TOKEN || github.token }}
+      - name: Checkout build automation
+        uses: actions/checkout@v4
+        with:
+          path: build-automation
+          persist-credentials: false
+      - name: Verify native Intel runner and source contract
+        id: pins
+        run: |
+          set -euo pipefail
+          [[ "$(uname -s)" == Darwin && "$(uname -m)" == x86_64 ]]
+          sw_vers
+          xcodebuild -version
+          python3 build-automation/scripts/intel/prepare-source.py . | tee intel-pins.txt
+          cat intel-pins.txt >> "$GITHUB_OUTPUT"
+          git diff --check
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+      - uses: pnpm/action-setup@v4
+      - uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # master
+        with:
+          toolchain: ${{ steps.pins.outputs.rust }}
+          targets: x86_64-apple-darwin
+      - name: Verify toolchain pins and architecture
+        env:
+          RUST_PIN: ${{ steps.pins.outputs.rust }}
+          NODE_PIN: ${{ steps.pins.outputs.node }}
+          PNPM_PIN: ${{ steps.pins.outputs.pnpm }}
+        run: |
+          set -euo pipefail
+          rustc -vV | tee rustc-version.txt
+          grep -qx 'host: x86_64-apple-darwin' rustc-version.txt
+          grep -qx "release: $RUST_PIN" rustc-version.txt
+          [[ "$(node -p 'process.arch')" == x64 ]]
+          [[ "$(node --version)" == "v$NODE_PIN" ]]
+          [[ "pnpm@$(pnpm --version)" == "$PNPM_PIN" ]]
+      - run: pnpm install --frozen-lockfile
+      - name: Build and pack Zephium
+        run: |
+          set -euo pipefail
+          build-automation/scripts/package "$RUST_TARGET" 2>&1 | tee build.log
+      - name: Upload DMG artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Zephium-Intel-macOS-legacy
+          path: |
+            dist/*.dmg
+            dist/community-build.patch
+            dist/COMMUNITY-BUILD.txt
+          if-no-files-found: error
+          retention-days: 7
+      - name: Upload failure diagnostics
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: Zephium-Intel-macOS-legacy-failure-${{ github.run_number }}
+          path: |
+            build.log
+            intel-pins.txt
+          retention-days: 7
