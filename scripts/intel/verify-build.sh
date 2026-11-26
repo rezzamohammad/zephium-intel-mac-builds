@@ -25,6 +25,7 @@ plist="$app/Contents/Info.plist"
 cmp "$app/Contents/Resources/licenses/Zephium-MPL-2.0.txt" LICENSE
 cmp "$app/Contents/Resources/licenses/THIRD_PARTY_NOTICES.txt" target/THIRD_PARTY_NOTICES.txt
 cmp "$app/Contents/Resources/licenses/COMMUNITY-BUILD.txt" target/COMMUNITY-BUILD.txt
+tar -xOf dist/zephium-macos-x86_64.app.tar.gz Zephium.app/Contents/MacOS/zephium-desktop | cmp - "$exe"
 for name in CC-BY-SA-3.0.txt GPL-3.0.txt NOTICE.txt; do
   test -s "$app/Contents/Resources/licenses/blocker/$name"
 done
@@ -67,7 +68,7 @@ trap - EXIT
 cp target/THIRD_PARTY_NOTICES.txt target/COMMUNITY-BUILD.txt dist/
 (
   cd dist
-  shasum -a 256 Zephium-macOS-x86_64.dmg community-build.patch THIRD_PARTY_NOTICES.txt COMMUNITY-BUILD.txt
+  shasum -a 256 Zephium-macOS-x86_64.dmg zephium-macos-x86_64.app.tar.gz community-build.patch THIRD_PARTY_NOTICES.txt COMMUNITY-BUILD.txt
 ) > SHA256SUMS
 {
   echo "archive_workflow_commit=$GITHUB_SHA"

@@ -113,7 +113,7 @@ jobs:
             echo 'Targeted excerpts from this Intel macOS build:'
             echo 'Linker, deployment-target and deprecation warnings:'
             if [[ -f build.log ]]; then
-              grep -E 'ld: warning|built for newer macOS|is deprecated|warning:|error:' build.log | head -80 || true
+              grep -E 'ld: warning|built for newer macOS|is deprecated|warning:|error:|hdiutil:|Resource busy' build.log | tail -80 || true
             else
               echo 'Build did not start; see the failed preflight or policy step in Actions.'
             fi
@@ -138,4 +138,4 @@ jobs:
         run: |
           set -euo pipefail
           [[ "$TAG" == "zephium-$VERSION-intel"* ]]
-          gh release create "$TAG" dist/Zephium-macOS-x86_64.dmg dist/community-build.patch dist/THIRD_PARTY_NOTICES.txt dist/COMMUNITY-BUILD.txt SHA256SUMS build-manifest.txt runtime-diagnostics.txt diagnostic-excerpts.txt --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --title "$TAG" --notes "Intel x86_64 Zephium $VERSION build of $ZEPHIUM_SOURCE_REPOSITORY@$ZEPHIUM_SOURCE_REF from $GITHUB_SHA. Ad hoc signed community build, not notarized. Manual updates only. See build-manifest.txt, community-build.patch and SHA256SUMS."
+          gh release create "$TAG" dist/Zephium-macOS-x86_64.dmg dist/zephium-macos-x86_64.app.tar.gz dist/community-build.patch dist/THIRD_PARTY_NOTICES.txt dist/COMMUNITY-BUILD.txt SHA256SUMS build-manifest.txt runtime-diagnostics.txt diagnostic-excerpts.txt --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --title "$TAG" --notes "Intel x86_64 Zephium $VERSION build of $ZEPHIUM_SOURCE_REPOSITORY@$ZEPHIUM_SOURCE_REF from $GITHUB_SHA. Ad hoc signed community build, not notarized. Manual updates only. See build-manifest.txt, community-build.patch and SHA256SUMS."

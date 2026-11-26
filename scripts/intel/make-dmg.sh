@@ -19,7 +19,21 @@ work="$(mktemp -d "${TMPDIR:-/tmp}/zephium-intel-dmg.XXXXXX")"; trap 'rm -rf "$w
 mkdir "$work/stage"
 ditto "$app" "$work/stage/Zephium.app"
 ln -s /Applications "$work/stage/Applications"
-hdiutil create -volname "$VOLNAME" -srcfolder "$work/stage" -fs HFS+ -format UDZO -imagekey zlib-level=9 "$work/Zephium.dmg"
+for attempt in 1 2 3; do
+  if hdiutil create -volname "$VOLNAME" -srcfolder "$work/stage" -fs HFS+ -format UDZO -imagekey zlib-level=9 "$work/Zephium.dmg" > "$work/create.log" 2>&1; then
+    cat "$work/create.log"
+    break
+  else
+    status=$?
+  fi
+  cat "$work/create.log" >&2
+  if [[ "$attempt" == 3 ]] || ! grep -q 'Resource busy' "$work/create.log"; then
+    exit "$status"
+  fi
+  echo "DMG creation reported Resource busy; retrying (attempt $((attempt+1))/3)" >&2
+  rm -f "$work/Zephium.dmg"
+  sleep "$((attempt*5))"
+done
 [[ -s "$work/Zephium.dmg" ]] || { echo 'error: hdiutil produced an empty DMG' >&2; exit 1; }
 hdiutil verify "$work/Zephium.dmg"
 mkdir -p "$(dirname "$out")"

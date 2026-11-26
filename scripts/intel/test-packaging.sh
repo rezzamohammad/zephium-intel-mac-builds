@@ -29,7 +29,21 @@ with open(sys.argv[1], 'wb') as output:
     }, output)
 PY
 codesign --force --sign - "$app"
-"$helper" "$app" "$work/test.dmg"
+# Inject one transient failure, then delegate to the real disk-image service.
+# Creation, verification and mounting must still succeed using native tools.
+mkdir "$work/bin"
+cat > "$work/bin/hdiutil" <<'SH'
+#!/usr/bin/env bash
+if [[ "${1:-}" == create && ! -e "$HDI_BUSY_MARKER" ]]; then
+  touch "$HDI_BUSY_MARKER"
+  echo 'hdiutil: create failed - Resource busy' >&2
+  exit 1
+fi
+exec /usr/bin/hdiutil "$@"
+SH
+chmod +x "$work/bin/hdiutil"
+HDI_BUSY_MARKER="$work/busy-injected" PATH="$work/bin:$PATH" "$helper" "$app" "$work/test.dmg"
+test -f "$work/busy-injected"
 hdiutil attach -readonly -nobrowse -mountpoint "$work/mount" "$work/test.dmg" >/dev/null
 mounted=true
 exe="$work/mount/Zephium.app/Contents/MacOS/zephium-desktop"
@@ -39,4 +53,4 @@ test -x "$exe"
 codesign --verify --deep --strict "$work/mount/Zephium.app"
 hdiutil detach "$work/mount" >/dev/null
 mounted=false
-echo 'PASS: signed Intel app with Tauri executable name survives DMG packaging and mounting'
+echo 'PASS: signed Intel app survives transient Resource busy, DMG packaging and mounting'

@@ -23,7 +23,7 @@ Zephium `v1.0.5` publishes an Apple Silicon macOS DMG and a Windows x64 installe
 4. Require a native `x86_64` macOS host, `x86_64-apple-darwin` rustc, and matching Node/pnpm pins.
 5. Install JavaScript dependencies with `pnpm install --frozen-lockfile`; generate upstream third-party notices with its own script and locked Cargo metadata.
 6. Build with upstream's Tauri CLI, default features and frontend build hook, targeting `x86_64-apple-darwin` with Cargo `--locked`. Merge only the community bundle settings; retain production CSP, entitlements, legal-resource mappings and macOS/WebKit admission.
-7. Validate the signed app and pack it with `hdiutil`. The strict path also verifies every Mach-O is Intel-only, licenses, version, system linkage, entitlements, mounted app and Applications link.
+7. Validate and archive the signed app before packing it with `hdiutil`. Retry only `Resource busy`, with a maximum of three attempts; preserve the app archive if DMG creation still fails. The strict path also verifies every Mach-O is Intel-only, licenses, version, system linkage, entitlements, mounted app and Applications link.
 
 Default pins at `v1.0.5`: Rust `1.95.0`, Node `24.18.0`, pnpm `11.17.0`, Tauri CLI `2.12.4`. These are read from source, not separate workflow copies.
 

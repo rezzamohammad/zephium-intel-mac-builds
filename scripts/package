@@ -29,4 +29,6 @@ config="$(pwd)/build-automation/scripts/intel/tauri.community.conf.json"
 app=target/x86_64-apple-darwin/release/bundle/macos/Zephium.app
 test -x "$app/Contents/MacOS/zephium-desktop"
 codesign --verify --deep --strict "$app"
+# Preserve the successful native build even when the disk-image service fails.
+tar -czf dist/zephium-macos-x86_64.app.tar.gz -C "$(dirname "$app")" Zephium.app
 build-automation/scripts/intel/make-dmg.sh "$app" dist/Zephium-macOS-x86_64.dmg

@@ -11,7 +11,7 @@ Open **Releases** and download the `.dmg` for your Intel Mac once a release has 
 Builds use the official [zephium-browser/Zephium](https://github.com/zephium-browser/Zephium) source project. Both workflows read `ZEPHIUM_SOURCE_REPOSITORY` and `ZEPHIUM_SOURCE_REF`, defaulting to the official repository at the immutable `v1.0.5` commit `1c4846cec9a9a0ab40ed45113d69a3f3c244d279`.
 
 - Target: Intel `x86_64`, not universal and not Apple Silicon
-- Build output: `Zephium.app` and `Zephium-macOS-x86_64.dmg`
+- Build output: `Zephium.app`, `zephium-macos-x86_64.app.tar.gz` and `Zephium-macOS-x86_64.dmg`
 - Platform requirement: upstream declares macOS 14.0 in the bundle and also checks the installed macOS/Safari/WebKit versions at startup. Those checks are retained.
 
 ## Install
@@ -34,7 +34,7 @@ This repository builds the pinned source natively on an Intel runner for `x86_64
 
 [`scripts/intel/prepare-source.py`](scripts/intel/prepare-source.py) checks SHA-256 pins for the upstream updater, Tauri configurations and notices generator before modifying anything. A changed integration file fails instead of silently applying stale logic. The resulting `community-build.patch` is included with the build output.
 
-[`scripts/intel/make-dmg.sh`](scripts/intel/make-dmg.sh) creates a drag-to-Applications DMG with `hdiutil`; it does not sign, notarize or staple the DMG.
+[`scripts/intel/make-dmg.sh`](scripts/intel/make-dmg.sh) creates a drag-to-Applications DMG with `hdiutil`; it does not sign, notarize or staple the DMG. If macOS reports `Resource busy`, creation is retried at most three times; other errors fail immediately. The signed app is archived before DMG creation and retained in failure artifacts, so a disk-image failure does not discard the compiled bundle.
 
 See [DEPENDENCIES.md](docs/DEPENDENCIES.md) for the dependency map and source links.
 
@@ -43,7 +43,7 @@ See [DEPENDENCIES.md](docs/DEPENDENCIES.md) for the dependency map and source li
 - **Legacy/manual:** [`build-intel-legacy.yml`](.github/workflows/build-intel-legacy.yml) is the minimal build path. Run it from **Actions → Build Intel DMG (legacy)**. It checks the source integration and toolchains, builds the app, verifies its signature and main executable architecture, and uploads a short-retention DMG artifact with the source patch and community notice.
 - **Strict/release:** [`build-intel-strict.yml`](.github/workflows/build-intel-strict.yml) is the recommended path. It also runs upstream engine/advisory checks and native macOS policy unit tests, scans every bundled Mach-O for Intel-only architecture, checks system-library linkage, ad hoc signing, entitlements, app version and notices, and mounts and validates the DMG. It uploads checksums, manifests and targeted logs, and can create a GitHub Release when given a tag such as `zephium-1.0.5-intel1`.
 
-Both workflows first run a packaging regression check using a small signed Intel app with Tauri's `zephium-desktop` executable name. The check creates and mounts a DMG without launching the fixture or touching a browser profile.
+Both workflows first run a packaging regression check using a small signed Intel app with Tauri's `zephium-desktop` executable name. The check injects one `Resource busy` failure, then creates, verifies and mounts a real DMG without launching the fixture or touching a browser profile.
 
 Both workflows are started manually; nothing runs on push or on a timer. The optional `release_tag` input adds upstream's `check-release-engine-security` gate before publication. Expired reviews or stale blocker seeds fail that gate; update and review the source integration rather than weakening the checks. An artifact-only build runs the ordinary upstream policy checks, which can emit review advisories.
 
